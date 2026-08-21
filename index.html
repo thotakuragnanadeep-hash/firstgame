@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>2.5D Billboard Sprite Adventure - 3D Blocky World</title>
+  <meta name="description" content="A 2.5D action adventure featuring a 2D animated billboard sprite in a stylized 3D blocky voxel world with fixed perspective camera and physics collisions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Three.js via ES Module Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="game-container">
+    <!-- 3D Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Top Bar HUD -->
+    <header class="hud-header">
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        <span class="game-title">VOXEL VENTURE 2.5D</span>
+      </div>
+
+      <div class="stats-bar">
+        <div class="stat-pill" title="Collected Gems">
+          <span class="stat-icon">💎</span>
+          <span class="stat-label">GEMS</span>
+          <span id="gem-count" class="stat-value">0 / 12</span>
+        </div>
+        <div class="stat-pill" title="Player Coordinates">
+          <span class="stat-icon">📍</span>
+          <span class="stat-label">POS</span>
+          <span id="pos-display" class="stat-value">X:0 Y:0 Z:0</span>
+        </div>
+        <div class="stat-pill" title="Player State">
+          <span class="stat-icon">🏃</span>
+          <span id="state-display" class="stat-value">IDLE</span>
+        </div>
+      </div>
+
+      <div class="hud-actions">
+        <button id="sound-btn" class="hud-btn" title="Toggle Sound (M)">
+          <span class="btn-icon">🔊</span>
+          <span class="btn-text">SOUND: ON</span>
+        </button>
+        <button id="camera-btn" class="hud-btn" title="Toggle Camera Angle (C)">
+          <span class="btn-icon">🎥</span>
+          <span class="btn-text">CAM: ISO</span>
+        </button>
+        <button id="help-btn" class="hud-btn" title="Toggle Controls & Info (H)">
+          <span class="btn-icon">❓</span>
+          <span class="btn-text">HELP</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating Help / Controls Overlay -->
+    <div id="help-modal" class="modal-overlay hidden">
+      <div class="glass-panel modal-card">
+        <div class="modal-header">
+          <h2>🎮 CONTROLS & HOW TO PLAY</h2>
+          <button id="close-help-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="control-grid">
+            <div class="control-row">
+              <div class="keys"><kbd>▲</kbd><kbd>▼</kbd><kbd>◄</kbd><kbd>►</kbd> or <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd></div>
+              <div class="desc">Move 2D Character in 3D Space (4 directions)</div>
+            </div>
+            <div class="control-row">
+              <div class="keys"><kbd>SPACE</kbd></div>
+              <div class="desc">Jump onto blocks & platforms</div>
+            </div>
+            <div class="control-row">
+              <div class="keys"><kbd>SHIFT</kbd></div>
+              <div class="desc">Sprint / Speed Boost</div>
+            </div>
+            <div class="control-row">
+              <div class="keys"><kbd>C</kbd></div>
+              <div class="desc">Toggle Isometric / Chase Camera Angle</div>
+            </div>
+            <div class="control-row">
+              <div class="keys"><kbd>R</kbd></div>
+              <div class="desc">Respawn / Reset Player Position</div>
+            </div>
+            <div class="control-row">
+              <div class="keys"><kbd>M</kbd></div>
+              <div class="desc">Mute / Unmute Audio Synthesizer</div>
+            </div>
+          </div>
+          <div class="features-summary">
+            <h3>🌟 2.5D System Highlights:</h3>
+            <ul>
+              <li><strong>2D Billboard Sprite:</strong> Dynamic animated sprite facing the camera while orienting in 3D space.</li>
+              <li><strong>3D Blocky Environment:</strong> Solid voxel obstacles, elevation staircases, and jump platforms.</li>
+              <li><strong>3D Collision Physics:</strong> Responsive AABB collision detection & gravity simulation.</li>
+              <li><strong>Fixed 3D Perspective:</strong> Smoothly tracking isometric chase camera.</li>
+            </ul>
+          </div>
+        </div>
+        <button id="modal-start-btn" class="action-btn primary">GOT IT, LET'S PLAY!</button>
+      </div>
+    </div>
+
+    <!-- Onscreen Mini Floating Controls Hint -->
+    <div class="controls-hint glass-pill">
+      <span><kbd>WASD</kbd> / <kbd>Arrows</kbd> Move</span>
+      <span class="sep">•</span>
+      <span><kbd>Space</kbd> Jump</span>
+      <span class="sep">•</span>
+      <span><kbd>Shift</kbd> Sprint</span>
+      <span class="sep">•</span>
+      <span><kbd>R</kbd> Reset</span>
+    </div>
+
+    <!-- Direction Indicator Radar / Compass -->
+    <div class="compass-widget glass-pill">
+      <div id="compass-arrow" class="compass-arrow">▲</div>
+      <span id="compass-text" class="compass-text">FACING SOUTH</span>
+    </div>
+
+    <!-- Mobile Virtual Gamepad (hidden on desktop, active on touch) -->
+    <div id="touch-controls" class="touch-controls">
+      <div class="dpad-container">
+        <button class="dpad-btn dpad-up" data-key="ArrowUp">▲</button>
+        <div class="dpad-middle">
+          <button class="dpad-btn dpad-left" data-key="ArrowLeft">◄</button>
+          <div class="dpad-center"></div>
+          <button class="dpad-btn dpad-right" data-key="ArrowRight">►</button>
+        </div>
+        <button class="dpad-btn dpad-down" data-key="ArrowDown">▼</button>
+      </div>
+      <div class="touch-actions">
+        <button class="action-touch-btn jump-touch-btn" data-key="Space">JUMP</button>
+        <button class="action-touch-btn sprint-touch-btn" data-key="ShiftLeft">RUN</button>
+      </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-banner" class="toast-banner hidden">
+      <span id="toast-text">Message</span>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
